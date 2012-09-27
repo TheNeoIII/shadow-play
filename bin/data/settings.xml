@@ -1,0 +1,7 @@
+<settings>
+    <startState>0</startState>
+    <testMode>1</testMode>
+    <thresholdValue>40</thresholdValue>
+    <dilateValue>50</dilateValue>
+    <blurValue>5</blurValue>
+</settings>
