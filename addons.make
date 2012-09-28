@@ -1,2 +1,3 @@
 ofxOpenCv
 ofxFenster
+ofxXmlSettings

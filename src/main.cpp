@@ -1,11 +1,10 @@
+#include "ofMain.h"
 #include "shadowPlay.h"
 #include "ofxFensterManager.h"
 #include "ofAppGlutWindow.h"
 
 //--------------------------------------------------------------
 int main(){
-	ofAppGlutWindow window; // create a window
-	// set width, height, mode (OF_WINDOW or OF_FULLSCREEN)
-	ofSetupOpenGL(&window, 1024, 768, OF_WINDOW);
-	ofRunApp(new shadowPlay()); // start the app
+	ofSetupOpenGL(ofxFensterManager::get(), DISPLAY_WIDTH, DISPLAY_HEIGHT, OF_WINDOW);	
+	ofRunFensterApp(new shadowPlay()); // start the app
 }
