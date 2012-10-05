@@ -1,3 +1,15 @@
+/*
+* shadowPlay.h
+* by btparker
+*
+* 
+* 
+* 
+* 
+*
+*/
+
+
 #pragma once
 #include "ofMain.h"
 #include "ofxOpenCv.h"
@@ -12,48 +24,50 @@
 enum { CALIBRATION, REAL_SHADOW, NO_SHADOW, COMPUTED_SHADOW, RECORDED_SHADOW, TRACKED_RECORDED_SHADOW};
 enum {CONTROL_WINDOW, WINDOW_A,WINDOW_B};
 
-enum { MOUSE_NONE, MOUSE_MOVED, MOUSE_DRAGGED, MOUSE_PRESSED, MOUSE_RELEASED};
+enum { MOUSE_NONE};//, MOUSE_MOVED, MOUSE_DRAGGED, MOUSE_PRESSED, MOUSE_RELEASED};
 
 /** BEGIN CHILD WINDOW **/
 class childWindow
 {
 public:
-    childWindow(string title, int id, int width, int height)
+  childWindow(string title, int id, int width, int height)//,ofPoint corners[])
     {
-        win = ofxFensterManager::get()->createFenster(0, 0, width, height, OF_WINDOW);
+      win = ofxFensterManager::get()->createFenster(0, 0, width, height, OF_WINDOW);
+      
+      win->setWindowTitle(title);
+      
+      this->id = id;
+      
+      buffer.allocate(width, height);
+      
 
-        win->setWindowTitle(title);
-
-        this->id = id;
-
-        buffer.allocate(width, height);
-
-        //this is just for our gui / mouse handles
-        //this will end up being the destination quad we are warping too
-        corners[0].x = 0.0;
-        corners[0].y = 0.0;
-
-        corners[1].x = 1.0;
-        corners[1].y = 0.0;
-
-        corners[2].x = 1.0;
-        corners[2].y = 1.0;
-
-        corners[3].x = 0.0;
-        corners[3].y = 1.0;
-
+      corners[0].x = 0.0;
+      corners[0].y = 0.0;
+      
+      corners[1].x = 1.0;
+      corners[1].y = 0.0;
+      
+      corners[2].x = 1.0;
+      corners[2].y = 1.0;
+      
+      corners[3].x = 0.0;
+      corners[3].y = 1.0;
+            
     }
-
-
-    ofFbo* getBuffer()
+  
+  
+  ofFbo* getBuffer()
     {
-        return &buffer;
+      return &buffer;
     }
-
-    ofxFenster* getWin()
+  
+  ofxFenster* getWin()
     {
         return win;
     }
+  ofPoint* getCorners(){
+    return corners;
+  }
 
     void draw()
     {
@@ -233,8 +247,12 @@ public:
 
 class shadowPlay : public ofBaseApp{
 	public:
+  
 		childWindow* winA;
         childWindow* winB;
+        
+        ofPoint cornersA[4];
+        ofPoint cornersB[4];
 
 		camera* cam;
 
