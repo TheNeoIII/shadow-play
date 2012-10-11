@@ -30,8 +30,7 @@ enum { MOUSE_NONE};//, MOUSE_MOVED, MOUSE_DRAGGED, MOUSE_PRESSED, MOUSE_RELEASED
 class childWindow
 {
 public:
-  childWindow(string title, int id, int width, int height)//,ofPoint corners[])
-    {
+  childWindow(string title, int id, int width, int height){
       win = ofxFensterManager::get()->createFenster(0, 0, width, height, OF_WINDOW);
       
       win->setWindowTitle(title);
@@ -53,8 +52,23 @@ public:
       corners[3].x = 0.0;
       corners[3].y = 1.0;
             
-    }
+  }
   
+  void setWarpPoints(ofPoint* pts){
+    corners[0] = pts[0];
+    corners[1] = pts[1];
+    corners[2] = pts[2];
+    corners[3] = pts[3];
+  }
+  
+  ofPoint* getWarpPoints(){
+    ofPoint* pts;
+    pts[0] = corners[0];
+    pts[1] = corners[1];
+    pts[2] = corners[2];
+    pts[3] = corners[3];
+    return pts;
+  }
   
   ofFbo* getBuffer()
     {
@@ -65,16 +79,16 @@ public:
     {
         return win;
     }
+  
   ofPoint* getCorners(){
     return corners;
   }
 
-    void draw()
-    {
-        win->draw();
-    }
+  void draw(){
+    win->draw();
+  }
 
-    void drawBoundingBox()
+  void drawBoundingBox()
     {
         ofNoFill();
         ofSetHexColor(0xFF00FF);
@@ -251,6 +265,8 @@ class shadowPlay : public ofBaseApp{
 		childWindow* winA;
         childWindow* winB;
         
+        ofPoint defaultWarpCoords[4];
+
         ofPoint cornersA[4];
         ofPoint cornersB[4];
 
@@ -302,10 +318,16 @@ class shadowPlay : public ofBaseApp{
 
 		float scaleFactor;
 
+        bool trackingShadow;
+
 
 		shadowPlay();
 		void setup();
         void loadSettings();
+        void saveSettings();
+        void assignDefaultSettings();
+        ofPoint* loadPoints(string s);
+        void savePoints(string s, childWindow*);
 		void update();
 		void draw();
 

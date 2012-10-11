@@ -4,15 +4,14 @@ shadowPlay::shadowPlay(){
 
 //--------------------------------------------------------------------------------
 void shadowPlay::setup(){
-
-  loadSettings();
-
   /* Creating two window views (one for each projector) */
   winA = new childWindow("Window A",WINDOW_A, DISPLAY_WIDTH, DISPLAY_HEIGHT);//,cornersA);
   winA->getWin()->addListener(new childWindowListener(this,winA->getBuffer(),WINDOW_A));
   winB = new childWindow("Window B",WINDOW_B, DISPLAY_WIDTH, DISPLAY_HEIGHT);//,cornersB);
   winB->getWin()->addListener(new childWindowListener(this,winB->getBuffer(),WINDOW_B));
   
+  loadSettings();
+
   /* Setting up to receive the camera input (pass 'true' for a sequence of test frames) */
   cam = new camera(true);
   cam->update();
@@ -37,6 +36,8 @@ void shadowPlay::setup(){
   maskA.allocate(cam->getWidth(), cam->getHeight());
   maskB.allocate(cam->getWidth(), cam->getHeight());
 
+
+  
   computedShadow.allocate(cam->getWidth(), cam->getHeight());
   outTemp.allocate(cam->getWidth(), cam->getHeight());
   shadow.allocate(cam->getWidth(), cam->getHeight());
@@ -53,73 +54,141 @@ void shadowPlay::setup(){
   diffBg = *(cam->getFrame());
 }
 
-//--------------------------------------------------------------------------------
-void shadowPlay::loadSettings(){
+void shadowPlay::assignDefaultSettings(){
+  /* Defaults for parameters */
   state = CALIBRATION;
   testMode = true;
+  trackingShadow = true;
   thresholdValue = 40;
   dilateValue = 5;
   blurValue = 5;
-  /**
-  cornersA[0].x = 0.0;
-  cornersA[0].y = 0.0;
-  
-  cornersA[1].x = 1.0;
-  cornersA[1].y = 0.0;
-  
-  cornersA[2].x = 1.0;
-  cornersA[2].y = 1.0;
-  
-  cornersA[3].x = 0.0;
-  cornersA[3].y = 1.0;
-  
-  
-  cornersB[0].x = cornersA[0].x;
-  cornersB[0].y = cornersA[0].y;
-  
-  cornersB[1].x = cornersA[1].x; 
-  cornersB[1].y = cornersA[1].y;
-  
-  cornersB[2].x = cornersA[2].x;
-  cornersB[2].y = cornersA[2].y;
-  
-  cornersB[3].x = cornersA[3].x;
-  cornersB[3].y = cornersA[3].y;
-  **/
-  
-  if(settings.loadFile("settings.xml")){
-    state = settings.getValue("settings:startState",state);
-    testMode = settings.getValue("settings:testMode",testMode);
-    thresholdValue = settings.getValue("settings:thresholdValue",thresholdValue);
-    dilateValue = settings.getValue("settings:dilateValue",dilateValue);
-    blurValue = settings.getValue("settings:blurValue",blurValue);
-    /**
 
-    cornersA[0].x = settings.getValue("settings:cA1x",cornersA[0].x);
-    cornersA[0].y = settings.getValue("settings:cA1y",cornersA[0].y);
-    
-    cornersA[1].x = settings.getValue("settings:cA2x",cornersA[1].x);
-    cornersA[1].y = settings.getValue("settings:cA2y",cornersA[1].y);
-    
-    cornersA[2].x = settings.getValue("settings:cA3x",cornersA[2].x);
-    cornersA[2].y = settings.getValue("settings:cA3y",cornersA[2].y);
-    
-    cornersA[3].x = settings.getValue("settings:cA4x",cornersA[3].x);
-    cornersA[3].y = settings.getValue("settings:cA4y",cornersA[3].y);
-    
-    cornersB[0].x = settings.getValue("settings:cB1x",cornersB[0].x);
-    cornersB[0].y = settings.getValue("settings:cB1y",cornersB[0].y);
-    
-    cornersB[1].x = settings.getValue("settings:cB2x",cornersB[1].x);
-    cornersB[1].y = settings.getValue("settings:cB2y",cornersB[1].y);
-    
-    cornersB[2].x = settings.getValue("settings:cB3x",cornersB[2].x);
-    cornersB[2].y = settings.getValue("settings:cB3y",cornersB[2].y);
-    
-    cornersB[3].x = settings.getValue("settings:cB4x",cornersB[3].x);
-    cornersB[3].y = settings.getValue("settings:cB4y",cornersB[3].y);
-    **/
+  defaultWarpCoords[0].x = 0.0;
+  defaultWarpCoords[0].y = 0.0;
+  
+  defaultWarpCoords[1].x = 1.0;
+  defaultWarpCoords[1].y = 0.0;
+  
+  defaultWarpCoords[2].x = 1.0;
+  defaultWarpCoords[2].y = 1.0;
+  
+  defaultWarpCoords[3].x = 0.0;
+  defaultWarpCoords[3].y = 1.0;
+
+  winA->setWarpPoints(defaultWarpCoords);
+  winB->setWarpPoints(defaultWarpCoords);
+
+}
+
+//--------------------------------------------------------------------------------
+void shadowPlay::loadSettings(){
+  assignDefaultSettings();
+  
+  /* Load settings file */
+  if(settings.loadFile("settings.xml")){
+    settings.pushTag("settings");
+    cout << "*** Loading settings file ***" << endl;
+    state = settings.getValue("state",state);
+    cout << "state " << state << endl;
+    testMode = settings.getValue("testMode",testMode);
+    cout << "testMode " << testMode << endl;
+    thresholdValue = settings.getValue("thresholdValue",thresholdValue);
+    cout << "thresholdValue " << thresholdValue << endl;
+    dilateValue = settings.getValue("dilateValue",dilateValue);
+    cout << "dilateValue " << dilateValue << endl;
+    blurValue = settings.getValue("blurValue",blurValue);
+    cout << "blurValue " << blurValue << endl;
+    winA->setWarpPoints(loadPoints("warpPtsA"));
+    winB->setWarpPoints(loadPoints("warpPtsB"));
+    cout << "*****************************" << endl;
+    settings.popTag();
   }
+  else{
+    cout << "No settings file to load." << endl;
+  }
+}
+
+ofPoint* shadowPlay::loadPoints(string s){
+  ofPoint pts[4];
+  settings.pushTag(s);
+  cout << s << ":" << endl;
+  for(int i = 0; i < 4; i++){
+    settings.pushTag("warpPt",i);
+    
+    stringstream ss;
+    ss << s;
+    ss << i;
+
+    pts[i] = defaultWarpCoords[i];
+    pts[i].x = settings.getValue("X", pts[i].x);
+    pts[i].y = settings.getValue("Y", pts[i].y); 
+
+    cout << "pts[" << i << "]: " << pts[i] << endl;
+    settings.popTag();
+    
+  }
+  settings.popTag();
+
+  return pts;
+}
+
+void shadowPlay::savePoints(string s, childWindow* cw){
+  ofPoint* pts;
+  pts = cw->getCorners();
+  settings.addTag(s);
+  settings.pushTag(s);
+  cout << s << ":" << endl;
+  for(int i = 0; i < 4; i++){
+    settings.addTag("warpPt");
+    settings.pushTag("warpPt",i);
+    
+    stringstream ss;
+    ss << s;
+    ss << i;
+
+    settings.setValue("X", pts[i].x);
+    settings.setValue("Y", pts[i].y); 
+
+    cout << "pts[" << i << "]: " << defaultWarpCoords[i] << endl;
+    settings.popTag();
+    
+  }
+  settings.popTag();
+
+
+}
+
+//--------------------------------------------------------------------------------
+void shadowPlay::saveSettings(){
+  settings.clear();
+  settings.addTag("settings");
+  settings.pushTag("settings");
+
+  cout << "*** Saving settings to file ***" << endl;
+
+  settings.setValue("state",state);
+  cout << "state " << state << endl;
+
+  settings.setValue("testMode",testMode);
+  cout << "testMode " << testMode << endl;
+
+  settings.setValue("thresholdValue",thresholdValue);
+  cout << "thresholdValue " << thresholdValue << endl;
+
+  settings.setValue("dilateValue",dilateValue);
+  cout << "thresholdValue " << thresholdValue << endl;
+
+  settings.setValue("blurValue",blurValue);
+  cout << "blurValue " << blurValue << endl;
+
+  savePoints("warpPtsA",winA);
+
+  savePoints("warpPtsB",winB);
+
+  settings.popTag();
+
+  settings.saveFile("settings.xml");
+  cout << "*** Saved to 'settings.xml' ***" << endl;
 }
 
 //--------------------------------------------------------------------------------
@@ -139,18 +208,16 @@ int shadowPlay::getFocus()
 void shadowPlay::update()
 {
   cam->update();
-  if(state==RECORDED_SHADOW || state == TRACKED_RECORDED_SHADOW)
-    {
-      recordedShadow.update();
-      trackShadow();
-    }
+  if(state==RECORDED_SHADOW || state == TRACKED_RECORDED_SHADOW){
+    recordedShadow.update();
+    trackShadow();
+  }
 }
 
 //--------------------------------------------------------------------------------
 void shadowPlay::generateMask()
 {
   frame = *(cam->getFrame());
-  
   
   diff = diffBg;
   diff.absDiff(frame);
@@ -162,10 +229,9 @@ void shadowPlay::generateMask()
     
   dilate = thresh;
   
-  for(int i = 0; i < dilateValue; i++)
-    {
-      dilate.dilate();
-    }
+  for(int i = 0; i < dilateValue; i++){
+    dilate.dilate();
+  }
   
   blur = dilate;
 
@@ -201,10 +267,9 @@ void shadowPlay::trackShadow()
   bool shadowVisible = shadowCF.nBlobs > 0;
   bool recShadowVisible = recordedShadowCF.nBlobs > 0;
   
-  if(shadowVisible && recShadowVisible)
-    {
-      shadowPos = shadowCF.blobs[0].centroid-recordedShadowCF.blobs[0].centroid;
-    }
+  if(shadowVisible && recShadowVisible){
+    shadowPos = shadowCF.blobs[0].centroid-recordedShadowCF.blobs[0].centroid;
+  }
   
 }
 
@@ -217,8 +282,6 @@ void shadowPlay::generateComputedShadow()
   computedShadow *= computedShadow;
   computedShadow.blurGaussian(1);
   computedShadow += computedShadow;
-  
-  
 }
 
 //--------------------------------------------------------------------------------
@@ -236,13 +299,12 @@ void shadowPlay::recordShadow(ofxCvGrayscaleImage im, string outputname, bool nu
   stringstream ss;
   ss  << "recordings/rec/";
   ss << outputname;
-  if(numberframes)
-    {
-      
-      ss << "_";
-      ss << setfill('0') << setw(6);
-      ss << outFrame;
-    }
+  if(numberframes){
+    
+    ss << "_";
+    ss << setfill('0') << setw(6);
+    ss << outFrame;
+  }
   
   ss << ".bmp";
   
@@ -257,68 +319,72 @@ void shadowPlay::draw()
   generateComputedShadow();
   
   
-  if(isRecording)
-    {
-      recordShadow();
-      /**
-         recordShadow(diff,"diff",false);
-         recordShadow(shadow,"shadow",false);
-         recordShadow(thresh,"thresh",false);
-         recordShadow(dilate,"dilate",false);
-         recordShadow(blur,"blur",false);
-         recordShadow(maskA,"maskA",false);
-         recordShadow(maskB,"maskB",false);
-      **/
-    }
+  if(isRecording){
+    recordShadow();
+    /**
+       recordShadow(diff,"diff",false);
+       recordShadow(shadow,"shadow",false);
+       recordShadow(thresh,"thresh",false);
+       recordShadow(dilate,"dilate",false);
+       recordShadow(blur,"blur",false);
+       recordShadow(maskA,"maskA",false);
+       recordShadow(maskB,"maskB",false);
+    **/
+  }
   
-
-  ofDrawBitmapString("fps: " + ofToString(ofGetFrameRate()),500,20);
-
-  ofDrawBitmapString("threshold value ([,]): " + ofToString(thresholdValue),10,40);
+  
+  ofDrawBitmapString("fps: " + ofToString(ofGetFrameRate()),330,20);
+  
+  ofDrawBitmapString("thresh value ( [ , ] ): " + ofToString(thresholdValue),10,40);
   thresh.draw(10,60);
-  ofDrawBitmapString("dilate value (;,'): " + ofToString(dilateValue),250,40);
-  dilate.draw(250,60);
-  ofDrawBitmapString("blur value (-,=): " + ofToString(blurValue),500,40);
-  blur.draw(500,60);
+  ofDrawBitmapString("dilate value ( ; , ' ): " + ofToString(dilateValue),330,40);
+  dilate.draw(330,60);
+  ofDrawBitmapString("blur value ( - , = ): " + ofToString(blurValue),660,40);
+  blur.draw(660,60);
   frame.draw(10,310);
   backgroundFrame.draw(330,310,320,240);
 
-  switch(state)
-    {
-    case CALIBRATION:
-      ofDrawBitmapString("state: CALIBRATION",10,20);
-      drawCalibrationFrames();
-      break;
-    case REAL_SHADOW:
-      ofDrawBitmapString("state: REAL_SHADOW",10,20);
-      drawRealShadow();
-      break;
-    case NO_SHADOW:
-      ofDrawBitmapString("state: NO_SHADOW",10,20);
-      drawNoShadow();
-      break;
-    case COMPUTED_SHADOW:
-      ofDrawBitmapString("state: COMPUTED_SHADOW",10,20);
-      drawComputedShadow();
-      break;
-    case RECORDED_SHADOW:
-      ofDrawBitmapString("state: RECORDED_SHADOW",10,20);
-      recordedShadowFrame = *(recordedShadow.getFrame());
-      recordedShadowThresh = recordedShadowFrame;
-      recordedShadowThresh.invert();
-      recordedShadowThresh.threshold(thresholdValue);
-      drawRecordedShadow();
-      break;
-    case TRACKED_RECORDED_SHADOW:
-      ofDrawBitmapString("state: TRACKED_RECORDED_SHADOW",10,20);
-      recordedShadowFrame = *(recordedShadow.getFrame());
-      recordedShadowThresh = recordedShadowFrame;
-      recordedShadowThresh.invert();
-      recordedShadowThresh.threshold(thresholdValue);
+
+  if(RECORDED_SHADOW || TRACKED_RECORDED_SHADOW){
+    recordedShadowFrame = *(recordedShadow.getFrame());
+    recordedShadowThresh = recordedShadowFrame;
+    recordedShadowThresh.invert();
+    recordedShadowThresh.threshold(thresholdValue);
+  }
+
+  if(trackingShadow){
+    ofDrawBitmapString("tracking shadow (t): true",660,20);
+  }
+  else{
+    ofDrawBitmapString("tracking shadow (t): false",660,20);
+  }
+
+  
+  switch(state){
+  case CALIBRATION:
+    ofDrawBitmapString("state ( 1 - 5 ): CALIBRATION (1)",10,20);
+    drawCalibrationFrames();
+    break;
+  case REAL_SHADOW:
+    ofDrawBitmapString("state ( 1 - 5 ): REAL_SHADOW (2)",10,20);
+    drawRealShadow();
+    break;
+  case NO_SHADOW:
+    ofDrawBitmapString("state ( 1 - 5 ): NO_SHADOW (3)",10,20);
+    drawNoShadow();
+    break;
+  case COMPUTED_SHADOW:
+    ofDrawBitmapString("state ( 1 - 5 ): COMPUTED_SHADOW (4)",10,20);
+    drawComputedShadow();
+    break;
+  case RECORDED_SHADOW:
+    ofDrawBitmapString("state ( 1 - 5 ): RECORDED_SHADOW (5)",10,20);
+    if(trackingShadow){
       trackShadow();
-      drawRecordedShadow();
-      break;
     }
+    drawRecordedShadow();
+    break;
+  }
   
   
   
@@ -516,114 +582,107 @@ void shadowPlay::drawRecordedShadow()
   winB->getBuffer()->end();
 }
 
-void saveSettings(){
-  
-}
 
 //--------------------------------------------------------------------------------
 void shadowPlay::keyPressed(int key)
 {
-  switch(key)
-    {
-    case 'd':
-      diffBg = frame;
-      recordShadow(diffBg,"diffBg",false);
-      break;
-    case 'f':
-      ofxFensterManager::get()->getWindowById(WINDOW_A)->toggleFullscreen();
-      ofxFensterManager::get()->getWindowById(WINDOW_B)->toggleFullscreen();
-      break;
-    case 'r':
-      isRecording = !isRecording;
-      outFrame = 0;
-      break;
-    case '1':
-      setState(CALIBRATION);
-      break;
-    case '2':
-      setState(REAL_SHADOW);
-      break;
-    case '3':
-      setState(NO_SHADOW);
-      break;
-    case '4':
-      setState(COMPUTED_SHADOW);
-      break;
-    case '5':
-      setState(RECORDED_SHADOW);
-      break;
-    case '6':
-      setState(TRACKED_RECORDED_SHADOW);
-      break;
-    case '[':
-      if(thresholdValue>0)
-        {
-          thresholdValue--;
-        }
-      break;
-    case ']':
-      thresholdValue++;
-      break;
-    case ';':
-      if(dilateValue>0)
-        {
-          dilateValue--;
-        }
-      break;
-    case '\'':
-      dilateValue++;
-      break;
-    case '-':
-      if(blurValue>0)
-        {
-          blurValue--;
-        }
-      break;
-    case '=':
-      blurValue++;
-      break;
-    case 269:
-      if(focus == WINDOW_A)
-        {
-          winA->bumpCorner(0,-1);
-        }
-      else if(focus == WINDOW_B)
-        {
-          winB->bumpCorner(0,-1);
-        }
-      break;
-    case 267:
-      if(focus == WINDOW_A)
-        {
-          winA->bumpCorner(-1,0);
-        }
-      else if(focus == WINDOW_B)
-        {
-          winB->bumpCorner(-1,0);
-        }
-      break;
-    case 270:
-      if(focus == WINDOW_A)
-        {
-          winA->bumpCorner(0,1);
-        }
-      else if(focus == WINDOW_B)
-        {
-          winB->bumpCorner(0,1);
-        }
-      break;
-    case 268:
-      if(focus == WINDOW_A)
-        {
-          winA->bumpCorner(1,0);
-        }
-      else if(focus == WINDOW_B)
-        {
-          winB->bumpCorner(1,0);
-        }
-      break;
-      
+  switch(key){
+  case 'd':
+    diffBg = frame;
+    recordShadow(diffBg,"diffBg",false);
+    break;
+  case 'f':
+    ofxFensterManager::get()->getWindowById(WINDOW_A)->toggleFullscreen();
+    ofxFensterManager::get()->getWindowById(WINDOW_B)->toggleFullscreen();
+    break;
+  case 'r':
+    isRecording = !isRecording;
+    outFrame = 0;
+    break;
+  case 's':
+    saveSettings();
+    break;
+  case 'c':
+    assignDefaultSettings();
+    break;
+  case '1':
+    setState(CALIBRATION);
+    break;
+  case '2':
+    setState(REAL_SHADOW);
+    break;
+  case '3':
+    setState(NO_SHADOW);
+    break;
+  case '4':
+    setState(COMPUTED_SHADOW);
+    break;
+  case '5':
+    setState(RECORDED_SHADOW);
+    break;
+  case '[':
+    if(thresholdValue>0){
+      thresholdValue--;
     }
+    break;
+  case ']':
+    thresholdValue++;
+    break;
+  case ';':
+    if(dilateValue>0){
+      dilateValue--;
+    }
+    break;
+  case '\'':
+    dilateValue++;
+    break;
+  case '-':
+    if(blurValue>0 ){
+      blurValue-=2;
+    }
+    else{
+      blurValue = 0;
+    }
+    break;
+  case '=':
+    blurValue+=2;
+    break;
+  case 't':
+    trackingShadow = !trackingShadow;
+      break;
+  case 269:
+    if(focus == WINDOW_A){
+      winA->bumpCorner(0,-1);
+    }
+    else if(focus == WINDOW_B){
+      winB->bumpCorner(0,-1);
+    }
+    break;
+  case 267:
+    if(focus == WINDOW_A){
+      winA->bumpCorner(-1,0);
+    }
+    else if(focus == WINDOW_B){
+      winB->bumpCorner(-1,0);
+    }
+      break;
+  case 270:
+    if(focus == WINDOW_A){
+      winA->bumpCorner(0,1);
+    }
+    else if(focus == WINDOW_B){
+      winB->bumpCorner(0,1);
+    }
+    break;
+  case 268:
+    if(focus == WINDOW_A){
+      winA->bumpCorner(1,0);
+    }
+      else if(focus == WINDOW_B){
+        winB->bumpCorner(1,0);
+      }
+    break;
+  }
 }
 
 //--------------------------------------------------------------------------------
@@ -634,18 +693,16 @@ void shadowPlay::mouseMoved(int x, int y)
 //--------------------------------------------------------------
 void shadowPlay::mouseDragged(int x, int y, int button)
 {
-  if(state==CALIBRATION)
-    {
-      switch(focus)
-        {
-        case WINDOW_A:
-          winA->dragCorner(x,y);
-          break;
-        case WINDOW_B:
-          winB->dragCorner(x,y);
-          break;
-        }
+  if(state==CALIBRATION){
+    switch(focus){
+    case WINDOW_A:
+      winA->dragCorner(x,y);
+      break;
+    case WINDOW_B:
+        winB->dragCorner(x,y);
+        break;
     }
+  }
   
 }
 
@@ -657,18 +714,16 @@ void shadowPlay::mouseReleased(int x, int y, int button)
 //--------------------------------------------------------------
 void shadowPlay::mousePressed(int x, int y, int button)
 {
-  if(state==CALIBRATION)
-    {
-      switch(focus)
-        {
-        case WINDOW_A:
-          winA->selectCorner(x,y);
-          break;
-        case WINDOW_B:
-          winB->selectCorner(x,y);
-          break;
-        }
+  if(state==CALIBRATION){
+    switch(focus){
+    case WINDOW_A:
+      winA->selectCorner(x,y);
+      break;
+    case WINDOW_B:
+      winB->selectCorner(x,y);
+      break;
     }
+  }
 }
 
 //--------------------------------------------------------------------------------
