@@ -4,11 +4,14 @@ shadowPlay::shadowPlay(){
 
 //--------------------------------------------------------------------------------
 void shadowPlay::setup(){
+
   /* Creating two window views (one for each projector) */
   winA = new childWindow("Window A",WINDOW_A, DISPLAY_WIDTH, DISPLAY_HEIGHT);//,cornersA);
   winA->getWin()->addListener(new childWindowListener(this,winA->getBuffer(),WINDOW_A));
   winB = new childWindow("Window B",WINDOW_B, DISPLAY_WIDTH, DISPLAY_HEIGHT);//,cornersB);
   winB->getWin()->addListener(new childWindowListener(this,winB->getBuffer(),WINDOW_B));
+
+  shadowRecDir = "recordings/rec/";
   
   loadSettings();
 
@@ -35,6 +38,8 @@ void shadowPlay::setup(){
   thresh.allocate(cam->getWidth(), cam->getHeight());
   maskA.allocate(cam->getWidth(), cam->getHeight());
   maskB.allocate(cam->getWidth(), cam->getHeight());
+  tween.allocate(cam->getWidth(), cam->getHeight());
+  fbo.allocate(cam->getWidth(), cam->getHeight(),GL_LUMINANCE);
 
 
   
@@ -46,12 +51,20 @@ void shadowPlay::setup(){
   
   scaleFactor = DISPLAY_WIDTH/cam->getWidth();
   
-  recordedShadow.init("recordings/camera_test/");
+  recordedShadow.init(shadowRecDir);
   isRecording = false;
 
   focus = CONTROL_WINDOW;  
 
   diffBg = *(cam->getFrame());
+
+  shadowTransition = true;
+  tweenLength = 5;
+  tweenFrame = 0;
+  shadowBlob = false;
+  recordedShadowBlob = false;
+//  //tween.set(1.0);
+
 }
 
 void shadowPlay::assignDefaultSettings(){
@@ -247,6 +260,7 @@ void shadowPlay::generateMask()
 //--------------------------------------------------------------------------------
 void shadowPlay::setState(int state)
 {
+  this->prevState = this->state;
   this->state = state;
 }
 
@@ -257,12 +271,32 @@ int shadowPlay::getState()
 }
 
 //--------------------------------------------------------------------------------
-void shadowPlay::trackShadow()
+void shadowPlay::contourShadows()
 {
   int minArea = 20;
   int maxArea = (int)((computedShadow.width)*(computedShadow.height));
   shadowCF.findContours(thresh,minArea,maxArea,1,false);
   recordedShadowCF.findContours(recordedShadowThresh,minArea,maxArea,1,false);
+
+  if(shadowCF.nBlobs > 0){
+    shadowBlob = true;
+  }
+  else{
+    shadowBlob = false;
+  }
+
+  if(recordedShadowCF.nBlobs > 0){
+    recordedShadowBlob = true;
+  }
+  else{
+    recordedShadowBlob = false;
+  }
+}
+
+//--------------------------------------------------------------------------------
+void shadowPlay::trackShadow()
+{
+  
   
   bool shadowVisible = shadowCF.nBlobs > 0;
   bool recShadowVisible = recordedShadowCF.nBlobs > 0;
@@ -273,6 +307,89 @@ void shadowPlay::trackShadow()
   
 }
 
+
+
+//--------------------------------------------------------------------------------
+void shadowPlay::tweenShadow(bool tweenToRecording, float percent){
+  ofPolyline inPL;
+  ofPolyline outPL;
+  ofPath tweenPath;
+  tweenPath.setPolyWindingMode(OF_POLY_WINDING_NONZERO);
+  
+  
+  
+  
+  if(!shadowBlob || !recordedShadowBlob){
+//    tween.set(1.0);
+    return;
+  }
+
+  ofxCvBlob inBlob;
+  ofxCvBlob outBlob;
+  if(tweenToRecording){
+    inBlob = recordedShadowCF.blobs[0];
+    outBlob = shadowCF.blobs[0];
+  }
+  else{
+    outBlob = recordedShadowCF.blobs[0];
+    inBlob = shadowCF.blobs[0];
+  }
+
+  inPL.addVertexes(inBlob.pts);
+  outPL.addVertexes(outBlob.pts);
+
+  int minNPts = inPL.size() < outPL.size() ? inPL.size() : outPL.size();
+  inPL = inPL.getResampledByCount(minNPts);
+  outPL = outPL.getResampledByCount(minNPts);
+  inPL = inPL.getSmoothed(5);
+  outPL = outPL.getSmoothed(5);
+
+  ofPoint tweenPt;
+  ofPoint inPt;
+  ofPoint outPt;
+  ofVec2f vec;
+  for(int i = 0; i < minNPts; i++){
+    inPt = inPL[i];
+    outPt = outPL[i];
+
+    vec = ofVec2f(inPt);
+    vec.interpolate(outPt,percent);
+    tweenPt = ofPoint(vec);
+    
+    if(i == 0) {  
+        tweenPath.newSubPath();  
+        tweenPath.moveTo(tweenPt);  
+    } else {  
+        tweenPath.lineTo( tweenPt );  
+    } 
+    
+  }
+  tweenPath.close();
+  tweenPath.setFillColor(ofColor(0,0,0));
+  tweenPath.setFilled(true);
+    
+  
+  
+  fbo.begin();
+    ofClear(255);
+    tweenPath.draw();
+
+  fbo.end();
+  
+  ofPixels pixels; 
+  fbo.readToPixels(pixels);
+  tween.setFromPixels(pixels);
+  tween.erode();
+  tween.dilate();
+  tween.invert();
+  tween.blurGaussian(3);
+  tween *= diffBg;
+  tween *= tween;
+  
+  tween += tween;
+  tween.invert();
+
+}
 //--------------------------------------------------------------------------------
 void shadowPlay::generateComputedShadow()
 {
@@ -287,7 +404,7 @@ void shadowPlay::generateComputedShadow()
 //--------------------------------------------------------------------------------
 void shadowPlay::recordShadow()
 {
-  recordShadow(frame,"frame",true);
+  recordShadow(computedShadow,"frame",true);
 }
 
 //--------------------------------------------------------------------------------
@@ -317,6 +434,7 @@ void shadowPlay::draw()
 {
   generateMask();
   generateComputedShadow();
+
   
   
   if(isRecording){
@@ -342,7 +460,9 @@ void shadowPlay::draw()
   ofDrawBitmapString("blur value ( - , = ): " + ofToString(blurValue),660,40);
   blur.draw(660,60);
   frame.draw(10,310);
-  backgroundFrame.draw(330,310,320,240);
+  computedShadow.draw(330,310,320,240);
+  backgroundFrame.draw(660,310,320,240);
+  tween.draw(10,660,320,240);
 
 
   if(RECORDED_SHADOW || TRACKED_RECORDED_SHADOW){
@@ -351,6 +471,8 @@ void shadowPlay::draw()
     recordedShadowThresh.invert();
     recordedShadowThresh.threshold(thresholdValue);
   }
+
+  contourShadows();
 
   if(trackingShadow){
     ofDrawBitmapString("tracking shadow (t): true",660,20);
@@ -383,6 +505,38 @@ void shadowPlay::draw()
       trackShadow();
     }
     drawRecordedShadow();
+    break;
+  case TWEEN_SHADOW:
+    ofDrawBitmapString("state : TWEEN_SHADOW",10,20);
+
+    if(trackingShadow){
+      trackShadow();
+    }
+
+    float tweenPercent = (1.0*tweenFrame)/(1.0*tweenLength);
+    if(prevState == COMPUTED_SHADOW){
+      tweenShadow(true, tweenPercent);  
+    }
+    else{
+      tweenShadow(false, tweenPercent);
+    }
+
+    drawTweenShadow();
+    if(tweenFrame >= tweenLength){
+      tweenFrame = 0;
+
+      if(prevState == COMPUTED_SHADOW){
+        setState(RECORDED_SHADOW);  
+      }
+      else{
+        setState(COMPUTED_SHADOW);
+      }
+      
+    }
+    else{
+      tweenFrame++;
+    }
+    
     break;
   }
   
@@ -533,6 +687,55 @@ void shadowPlay::drawComputedShadow()
 }
 
 //--------------------------------------------------------------------------------
+void shadowPlay::drawTweenShadow()
+{
+  // Draw Window A
+  winA->draw();
+  
+  winA->getBuffer()->begin();
+  ofClear(0,0,0);
+  winA->windowDistort();
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_ONE, GL_ZERO);
+  
+  backgroundFrame.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+  
+  glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+  
+  maskA.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+  
+  glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+  
+  tween.draw(shadowPos.x*scaleFactor,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+
+  glDisable(GL_BLEND);
+  
+  winA->getBuffer()->end();
+  
+  //Draw Window B
+  winB->draw();
+  
+  winB->getBuffer()->begin();
+  ofClear(0,0,0);
+  winB->windowDistort();
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_ONE, GL_ZERO);
+  
+  backgroundFrame.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+  
+  glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+  
+  maskB.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+  
+  glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+  
+  tween.draw(shadowPos.x*scaleFactor,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+
+  glDisable(GL_BLEND);
+  winB->getBuffer()->end();
+}
+
+//--------------------------------------------------------------------------------
 void shadowPlay::drawRecordedShadow()
 {
   
@@ -586,6 +789,7 @@ void shadowPlay::drawRecordedShadow()
 //--------------------------------------------------------------------------------
 void shadowPlay::keyPressed(int key)
 {
+
   switch(key){
   case 'd':
     diffBg = frame;
@@ -649,7 +853,13 @@ void shadowPlay::keyPressed(int key)
     break;
   case 't':
     trackingShadow = !trackingShadow;
-      break;
+    break;
+  case 'i':
+    if(tweenFrame == 0){
+      setState(TWEEN_SHADOW);
+    }
+    
+    break;
   case 269:
     if(focus == WINDOW_A){
       winA->bumpCorner(0,-1);

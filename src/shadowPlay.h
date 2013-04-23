@@ -19,9 +19,9 @@
 
 
 #define DISPLAY_WIDTH 1024
-#define DISPLAY_HEIGHT 768
+#define DISPLAY_HEIGHT 1024
 
-enum { CALIBRATION, REAL_SHADOW, NO_SHADOW, COMPUTED_SHADOW, RECORDED_SHADOW, TRACKED_RECORDED_SHADOW};
+enum { CALIBRATION, REAL_SHADOW, NO_SHADOW, COMPUTED_SHADOW, RECORDED_SHADOW, TRACKED_RECORDED_SHADOW, TWEEN_SHADOW};
 enum {CONTROL_WINDOW, WINDOW_A,WINDOW_B};
 
 enum { MOUSE_NONE};//, MOUSE_MOVED, MOUSE_DRAGGED, MOUSE_PRESSED, MOUSE_RELEASED};
@@ -284,7 +284,8 @@ class shadowPlay : public ofBaseApp{
 		ofxCvGrayscaleImage frame;
 		ofxCvGrayscaleImage maskA;
 		ofxCvGrayscaleImage maskB;
-		ofxCvGrayscaleImage diff;
+        ofxCvGrayscaleImage diff;
+		ofxCvGrayscaleImage tween;
 		ofxCvGrayscaleImage diffBg;
 		ofxCvGrayscaleImage dilate;
 		ofxCvGrayscaleImage blur;
@@ -306,7 +307,8 @@ class shadowPlay : public ofBaseApp{
 		ofImage out;
 		ofxCvColorImage outTemp;
 
-		int state;
+        int state;
+		int prevState;
         
         bool testMode;
 
@@ -319,6 +321,16 @@ class shadowPlay : public ofBaseApp{
 		float scaleFactor;
 
         bool trackingShadow;
+        bool shadowTransition;
+        int tweenLength;
+        int tweenFrame;
+
+        string shadowRecDir;
+
+        ofFbo fbo;
+
+        bool shadowBlob;
+        bool recordedShadowBlob;
 
 
 		shadowPlay();
@@ -347,7 +359,8 @@ class shadowPlay : public ofBaseApp{
 		void drawNoShadow();
 		void drawRealShadow();
 		void drawComputedShadow();
-		void drawRecordedShadow();
+        void drawRecordedShadow();
+		void drawTweenShadow();
 
 		void setFocus(int id);
 		int getFocus();
@@ -357,7 +370,9 @@ class shadowPlay : public ofBaseApp{
 		void generateMask();
 		void generateComputedShadow();
 
-		void trackShadow();
+        void trackShadow();
+        void contourShadows();
+		void tweenShadow(bool tweenToRecording, float percent);
 		void recordShadow();
 		void recordShadow(ofxCvGrayscaleImage im,string outputname, bool numberframes);
 
