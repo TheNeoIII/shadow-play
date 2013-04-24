@@ -239,6 +239,7 @@ public:
         //finally lets multiply our matrix
         //wooooo hoooo!
         glMultMatrixf(myMatrix);
+
     }
 
 

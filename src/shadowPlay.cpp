@@ -597,7 +597,6 @@ void shadowPlay::drawCalibrationFrames()
 //--------------------------------------------------------------------------------
 void shadowPlay::drawRealShadow()
 {
-  // Draw Window A
   winA->draw();
   
   winA->getBuffer()->begin();
@@ -618,7 +617,16 @@ void shadowPlay::drawRealShadow()
 //--------------------------------------------------------------------------------
 void shadowPlay::drawNoShadow()
 {
-  
+  fbo.begin();
+  ofClear(0,0,0);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_ONE, GL_ZERO);
+  calibImageB.draw(0,0,performerMask.getWidth(),performerMask.getHeight());
+  glBlendFunc(GL_DST_COLOR, GL_ZERO);
+  performerMask.draw(0,0);
+  glDisable(GL_BLEND);
+  fbo.end();
+
   winA->draw();
   
   winA->getBuffer()->begin();
@@ -631,7 +639,7 @@ void shadowPlay::drawNoShadow()
   
   backgroundFrame.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
-  glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFunc(GL_DST_COLOR, GL_ZERO);
   
   maskA.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
@@ -645,16 +653,27 @@ void shadowPlay::drawNoShadow()
   winB->getBuffer()->begin();
   ofClear(0,0,0);
   winB->windowDistort();
+  
   glEnable(GL_BLEND);
+  //glBlendEquation ( GL_FUNC_ADD );
   glBlendFunc(GL_ONE, GL_ZERO);
   
   backgroundFrame.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
-  glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
-  
+  glBlendFunc(GL_DST_COLOR, GL_ZERO);
+  //glBlendEquation(GL_FUNC_SUBTRACT);
+
   maskB.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
-  
+
+  // glBlendEquation(GL_FUNC_ADD);
+
+  glBlendFunc(GL_ONE, GL_ONE);
+
+  fbo.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+
+
   glDisable(GL_BLEND);
+
   winB->getBuffer()->end();
 }
 
@@ -674,11 +693,11 @@ void shadowPlay::drawComputedShadow()
   
   backgroundFrame.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
-  glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFunc(GL_DST_COLOR, GL_ZERO);
   
   maskA.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
-  glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFunc(GL_DST_COLOR, GL_ZERO);
   
   computedShadow.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
 
@@ -697,13 +716,9 @@ void shadowPlay::drawComputedShadow()
   
   backgroundFrame.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
-  glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFunc(GL_DST_COLOR, GL_ZERO);
   
   maskB.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
-  
-  glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
-  
-  computedShadow.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
   glDisable(GL_BLEND);
   winB->getBuffer()->end();
@@ -725,11 +740,11 @@ void shadowPlay::drawTweenShadow()
   
   backgroundFrame.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
-  glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFunc(GL_DST_COLOR, GL_ZERO);
   
   maskA.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
-  glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFunc(GL_DST_COLOR, GL_ZERO);
   
   tween.draw(shadowPos.x*scaleFactor,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
 
@@ -748,11 +763,11 @@ void shadowPlay::drawTweenShadow()
   
   backgroundFrame.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
-  glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFunc(GL_DST_COLOR, GL_ZERO);
   
   maskB.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
-  glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFunc(GL_DST_COLOR, GL_ZERO);
   
   tween.draw(shadowPos.x*scaleFactor,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
 
@@ -779,11 +794,11 @@ cout << aColor << endl;
   
   backgroundFrame.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
-  glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFunc(GL_DST_COLOR, GL_ZERO);
   
   maskA.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
-  glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFunc(GL_DST_COLOR, GL_ZERO);
   
   recordedShadowFrame.draw(shadowPos.x*scaleFactor,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
@@ -802,11 +817,11 @@ cout << aColor << endl;
   
   backgroundFrame.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
-  glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFunc(GL_DST_COLOR, GL_ZERO);
   
   maskB.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
-  glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFunc(GL_DST_COLOR, GL_ZERO);
   
   recordedShadowFrame.draw(shadowPos.x*scaleFactor,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
