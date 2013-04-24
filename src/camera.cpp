@@ -11,6 +11,7 @@ camera::camera(bool isTest)
         }
         else
         {
+            vg.setDeviceID(1);
             vg.initGrabber(320,240,false);
             this->width = vg.getWidth();
             this->height = vg.getHeight();

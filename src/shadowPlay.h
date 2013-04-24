@@ -19,7 +19,7 @@
 
 
 #define DISPLAY_WIDTH 1024
-#define DISPLAY_HEIGHT 1024
+#define DISPLAY_HEIGHT 768
 
 enum { CALIBRATION, REAL_SHADOW, NO_SHADOW, COMPUTED_SHADOW, RECORDED_SHADOW, TRACKED_RECORDED_SHADOW, TWEEN_SHADOW};
 enum {CONTROL_WINDOW, WINDOW_A,WINDOW_B};
@@ -293,7 +293,10 @@ class shadowPlay : public ofBaseApp{
 		ofxCvGrayscaleImage computedShadow;
 		ofxCvGrayscaleImage shadow;
 		ofxCvGrayscaleImage recordedShadowThresh;
-		ofxCvGrayscaleImage recordedShadowFrame;
+        ofxCvGrayscaleImage recordedShadowFrame;
+		
+        ofxCvGrayscaleImage performerMask;
+        ofxCvGrayscaleImage characterMask;
 
 		ofxCvContourFinder shadowCF;
 		ofxCvContourFinder recordedShadowCF;
@@ -332,6 +335,9 @@ class shadowPlay : public ofBaseApp{
         bool shadowBlob;
         bool recordedShadowBlob;
 
+        ofVec3f aColor;
+        ofVec3f bColor;
+
 
 		shadowPlay();
 		void setup();
@@ -360,7 +366,8 @@ class shadowPlay : public ofBaseApp{
 		void drawRealShadow();
 		void drawComputedShadow();
         void drawRecordedShadow();
-		void drawTweenShadow();
+        void drawTweenShadow();
+		void drawOnPerformer();
 
 		void setFocus(int id);
 		int getFocus();

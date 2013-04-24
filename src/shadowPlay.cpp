@@ -41,6 +41,9 @@ void shadowPlay::setup(){
   tween.allocate(cam->getWidth(), cam->getHeight());
   fbo.allocate(cam->getWidth(), cam->getHeight(),GL_LUMINANCE);
 
+  performerMask.allocate(cam->getWidth(), cam->getHeight());
+  characterMask.allocate(cam->getWidth(), cam->getHeight());
+
 
   
   computedShadow.allocate(cam->getWidth(), cam->getHeight());
@@ -59,10 +62,15 @@ void shadowPlay::setup(){
   diffBg = *(cam->getFrame());
 
   shadowTransition = true;
-  tweenLength = 5;
+  tweenLength = 12;
   tweenFrame = 0;
   shadowBlob = false;
   recordedShadowBlob = false;
+
+  aColor.set(1.0,1.0,1.0);
+  bColor.set(1.0,1.0,1.0);
+
+
 //  //tween.set(1.0);
 
 }
@@ -255,6 +263,11 @@ void shadowPlay::generateMask()
   maskA = blur;
   maskB = maskA;
   maskB.invert();
+
+  performerMask = thresh;
+  performerMask.dilate();
+  performerMask.dilate();
+  performerMask.blurGaussian();
 }
 
 //--------------------------------------------------------------------------------
@@ -382,7 +395,7 @@ void shadowPlay::tweenShadow(bool tweenToRecording, float percent){
   tween.erode();
   tween.dilate();
   tween.invert();
-  tween.blurGaussian(3);
+  tween.blurGaussian(4);
   tween *= diffBg;
   tween *= tween;
   
@@ -399,6 +412,8 @@ void shadowPlay::generateComputedShadow()
   computedShadow *= computedShadow;
   computedShadow.blurGaussian(1);
   computedShadow += computedShadow;
+
+
 }
 
 //--------------------------------------------------------------------------------
@@ -539,10 +554,9 @@ void shadowPlay::draw()
     
     break;
   }
-  
-  
-  
+
 }
+
 
 //--------------------------------------------------------------------------------
 void shadowPlay::drawCalibrationFrames()
@@ -553,12 +567,17 @@ void shadowPlay::drawCalibrationFrames()
   winA->getBuffer()->begin();
   ofClear(0,0,0);
   winA->windowDistort();
+  cout << aColor << endl;
+  glBlendColor(aColor.x,aColor.y,aColor.z,1);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
   calibImageA.draw(0,0);
+
   if(focus == WINDOW_A)
     {
       winA->drawBoundingBox();
     }
-  
+  glDisable(GL_BLEND);
   winA->getBuffer()->end();
   
   //Draw Window B
@@ -605,8 +624,10 @@ void shadowPlay::drawNoShadow()
   winA->getBuffer()->begin();
   ofClear(0,0,0);
   winA->windowDistort();
+  cout << aColor << endl;
+  glBlendColor(aColor.x,aColor.y,aColor.z,1);
   glEnable(GL_BLEND);
-  glBlendFunc(GL_ONE, GL_ZERO);
+  glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
   
   backgroundFrame.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
@@ -646,8 +667,10 @@ void shadowPlay::drawComputedShadow()
   winA->getBuffer()->begin();
   ofClear(0,0,0);
   winA->windowDistort();
+  cout << aColor << endl;
+  glBlendColor(aColor.x,aColor.y,aColor.z,1);
   glEnable(GL_BLEND);
-  glBlendFunc(GL_ONE, GL_ZERO);
+  glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
   
   backgroundFrame.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
@@ -658,7 +681,7 @@ void shadowPlay::drawComputedShadow()
   glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
   
   computedShadow.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
-  
+
   glDisable(GL_BLEND);
   
   winA->getBuffer()->end();
@@ -695,8 +718,10 @@ void shadowPlay::drawTweenShadow()
   winA->getBuffer()->begin();
   ofClear(0,0,0);
   winA->windowDistort();
+  cout << aColor << endl;
+  glBlendColor(aColor.x,aColor.y,aColor.z,1);
   glEnable(GL_BLEND);
-  glBlendFunc(GL_ONE, GL_ZERO);
+  glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
   
   backgroundFrame.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
@@ -745,8 +770,12 @@ void shadowPlay::drawRecordedShadow()
   winA->getBuffer()->begin();
   ofClear(0,0,0);
   winA->windowDistort();
+
+cout << aColor << endl;
+  glBlendColor(aColor.x,aColor.y,aColor.z,1);
+
   glEnable(GL_BLEND);
-  glBlendFunc(GL_ONE, GL_ZERO);
+  glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
   
   backgroundFrame.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
@@ -789,8 +818,88 @@ void shadowPlay::drawRecordedShadow()
 //--------------------------------------------------------------------------------
 void shadowPlay::keyPressed(int key)
 {
+  float inc = 0.005;
 
   switch(key){
+  case 'z':
+    if(focus == WINDOW_A){
+
+      aColor.y = aColor.y - inc;
+      aColor.z = aColor.z - inc;
+
+    }
+    else if(focus == WINDOW_B){
+      bColor.y = bColor.y - inc;
+      bColor.z = bColor.z - inc;
+
+    }
+    break;
+  case 'x':
+    if(focus == WINDOW_A){
+
+      aColor.y = aColor.y + inc;
+      aColor.z = aColor.z + inc;
+
+    }
+    else if(focus == WINDOW_B){
+      bColor.y = bColor.y + inc;
+      bColor.z = bColor.z + inc;
+
+    }
+    break;
+  case 'c':
+    if(focus == WINDOW_A){
+
+      aColor.x = aColor.x - inc;
+      aColor.z = aColor.z - inc;
+
+    }
+    else if(focus == WINDOW_B){
+      bColor.x = bColor.x - inc;
+      bColor.z = bColor.z - inc;
+
+    }
+    break;
+  case 'v':
+    if(focus == WINDOW_A){
+
+      aColor.x = aColor.x + inc;
+      aColor.z = aColor.z + inc;
+
+    }
+    else if(focus == WINDOW_B){
+      bColor.x = bColor.x + inc;
+      bColor.z = bColor.z + inc;
+
+    }
+    break;
+  case 'b':
+    if(focus == WINDOW_A){
+
+      aColor.y = aColor.y - inc;
+      aColor.x = aColor.x - inc;
+
+    }
+    else if(focus == WINDOW_B){
+      bColor.y = bColor.y - inc;
+      bColor.x = bColor.x - inc;
+
+    }
+    break;
+  case 'n':
+    if(focus == WINDOW_A){
+
+      aColor.y = aColor.y + inc;
+      aColor.x = aColor.x + inc;
+
+    }
+    else if(focus == WINDOW_B){
+      bColor.y = bColor.y + inc;
+      bColor.x = bColor.x + inc;
+
+    }
+    break;
+
   case 'd':
     diffBg = frame;
     recordShadow(diffBg,"diffBg",false);
@@ -806,7 +915,7 @@ void shadowPlay::keyPressed(int key)
   case 's':
     saveSettings();
     break;
-  case 'c':
+  case 'a':
     assignDefaultSettings();
     break;
   case '1':
@@ -841,7 +950,7 @@ void shadowPlay::keyPressed(int key)
     dilateValue++;
     break;
   case '-':
-    if(blurValue>0 ){
+    if(blurValue>=2 ){
       blurValue-=2;
     }
     else{
