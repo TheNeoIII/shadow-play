@@ -29,7 +29,7 @@ public:
 
     int getHeight();
 
-    void drawFrame();
+    void drawFrame(int x, int y, int w, int h);
 
     ofxCvGrayscaleImage* getFrame();
 };

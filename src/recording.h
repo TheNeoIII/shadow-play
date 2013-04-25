@@ -18,7 +18,7 @@ public:
     void update();
     int getWidth();
     int getHeight();
-    void drawFrame();
+    void drawFrame(int x, int y, int w, int h);
     unsigned char* getPixels();
     ofxCvGrayscaleImage* getFrame();
 };

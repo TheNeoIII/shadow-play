@@ -40,6 +40,8 @@ void shadowPlay::setup(){
   maskB.allocate(cam->getWidth(), cam->getHeight());
   tween.allocate(cam->getWidth(), cam->getHeight());
   fbo.allocate(cam->getWidth(), cam->getHeight(),GL_LUMINANCE);
+  performerFbo.allocate(cam->getWidth(), cam->getHeight(),GL_RGB);
+  characterFbo.allocate(cam->getWidth(), cam->getHeight(),GL_RGB);
 
   performerMask.allocate(cam->getWidth(), cam->getHeight());
   characterMask.allocate(cam->getWidth(), cam->getHeight());
@@ -55,6 +57,7 @@ void shadowPlay::setup(){
   scaleFactor = DISPLAY_WIDTH/cam->getWidth();
   
   recordedShadow.init(shadowRecDir);
+  performerProj.init("recordings/eye/");
   isRecording = false;
 
   focus = CONTROL_WINDOW;  
@@ -229,10 +232,11 @@ int shadowPlay::getFocus()
 void shadowPlay::update()
 {
   cam->update();
-  if(state==RECORDED_SHADOW || state == TRACKED_RECORDED_SHADOW){
-    recordedShadow.update();
-    trackShadow();
-  }
+  //if(state==RECORDED_SHADOW || state == TRACKED_RECORDED_SHADOW){
+  recordedShadow.update();
+  performerProj.update();
+  trackShadow();
+  //}
 }
 
 //--------------------------------------------------------------------------------
@@ -315,7 +319,9 @@ void shadowPlay::trackShadow()
   bool recShadowVisible = recordedShadowCF.nBlobs > 0;
   
   if(shadowVisible && recShadowVisible){
-    shadowPos = shadowCF.blobs[0].centroid-recordedShadowCF.blobs[0].centroid;
+    shadowCentroid = shadowCF.blobs[0].centroid;
+    recShadowCentroid = recordedShadowCF.blobs[0].centroid;
+    shadowPos = shadowCentroid - recShadowCentroid;
   }
   
 }
@@ -496,6 +502,16 @@ void shadowPlay::draw()
     ofDrawBitmapString("tracking shadow (t): false",660,20);
   }
 
+  performerFbo.begin();
+    ofClear(0,0,0);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ZERO);
+    performerProj.drawFrame(shadowCentroid.x-performerMask.getWidth()/2.0,shadowCentroid.y-performerMask.getHeight()/2.0,performerMask.getWidth(),performerMask.getHeight());
+    glBlendFunc(GL_DST_COLOR, GL_ZERO);
+    performerMask.draw(0,0);
+    glDisable(GL_BLEND);
+  performerFbo.end();
+
   
   switch(state){
   case CALIBRATION:
@@ -617,15 +633,7 @@ void shadowPlay::drawRealShadow()
 //--------------------------------------------------------------------------------
 void shadowPlay::drawNoShadow()
 {
-  fbo.begin();
-  ofClear(0,0,0);
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_ONE, GL_ZERO);
-  calibImageB.draw(0,0,performerMask.getWidth(),performerMask.getHeight());
-  glBlendFunc(GL_DST_COLOR, GL_ZERO);
-  performerMask.draw(0,0);
-  glDisable(GL_BLEND);
-  fbo.end();
+  
 
   winA->draw();
   
@@ -669,7 +677,7 @@ void shadowPlay::drawNoShadow()
 
   glBlendFunc(GL_ONE, GL_ONE);
 
-  fbo.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+  performerFbo.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
 
 
   glDisable(GL_BLEND);
@@ -1063,4 +1071,5 @@ void shadowPlay::mousePressed(int x, int y, int button)
 //--------------------------------------------------------------------------------
 void shadowPlay::exit()
 {
+  delete cam;
 }

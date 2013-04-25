@@ -50,9 +50,9 @@ int camera::getHeight()
         return height;
 }
 
-void camera::drawFrame()
+void camera::drawFrame(int x, int y, int w, int h)
 {
-        gsCamFrame.draw(0,0);
+        gsCamFrame.draw(x,y,w,h);
 }
 
 ofxCvGrayscaleImage* camera::getFrame()

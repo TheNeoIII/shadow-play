@@ -302,11 +302,14 @@ class shadowPlay : public ofBaseApp{
 		ofxCvContourFinder shadowCF;
 		ofxCvContourFinder recordedShadowCF;
 
-		ofVec2f shadowPos;
+        ofVec2f shadowPos;
+        ofVec2f shadowCentroid;
+		ofVec2f recShadowCentroid;
 
 		bool isRecording;
 
-		recording recordedShadow;
+        recording recordedShadow;
+		recording performerProj;
 
 		ofImage out;
 		ofxCvColorImage outTemp;
@@ -332,6 +335,8 @@ class shadowPlay : public ofBaseApp{
         string shadowRecDir;
 
         ofFbo fbo;
+        ofFbo characterFbo;
+        ofFbo performerFbo;
 
         bool shadowBlob;
         bool recordedShadowBlob;

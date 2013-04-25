@@ -12,6 +12,7 @@ void recording::init(string framespath)
 	dir.sort();
 
         numFrames = dir.numFiles();
+        cout << numFrames << endl;
 
         frameIndex = 0;
 
@@ -81,9 +82,9 @@ int recording::getHeight()
         return height;
 }
 
-void recording::drawFrame()
+void recording::drawFrame(int x, int y, int w, int h)
 {
-        frame.draw(0,0);
+        frame.draw(x,y,w,h);
 }
 
 unsigned char* recording::getPixels()
