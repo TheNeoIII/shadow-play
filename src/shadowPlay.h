@@ -309,10 +309,16 @@ class shadowPlay : public ofBaseApp{
 		bool isRecording;
 
         recording recordedShadow;
-		recording performerProj;
+        recording performerProj;
+		recording characterProj;
+
+        int performerFade;
+        bool performerFadeIn;
+        bool performerLit;
 
 		ofImage out;
-		ofxCvColorImage outTemp;
+        ofxCvColorImage outTempC;
+		ofxCvGrayscaleImage outTempG;
 
         int state;
 		int prevState;

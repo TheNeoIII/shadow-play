@@ -49,7 +49,8 @@ void shadowPlay::setup(){
 
   
   computedShadow.allocate(cam->getWidth(), cam->getHeight());
-  outTemp.allocate(cam->getWidth(), cam->getHeight());
+  outTempC.allocate(cam->getWidth(), cam->getHeight());
+  outTempG.allocate(cam->getWidth(), cam->getHeight());
   shadow.allocate(cam->getWidth(), cam->getHeight());
   recordedShadowFrame.allocate(cam->getWidth(), cam->getHeight());
   recordedShadowThresh.allocate(cam->getWidth(), cam->getHeight());
@@ -58,7 +59,12 @@ void shadowPlay::setup(){
   
   recordedShadow.init(shadowRecDir);
   performerProj.init("recordings/eye/");
+  characterProj.init("recordings/eye/");
   isRecording = false;
+
+  performerFade = 255;
+  performerFadeIn = true;
+  performerLit = true;
 
   focus = CONTROL_WINDOW;  
 
@@ -268,9 +274,12 @@ void shadowPlay::generateMask()
   maskB = maskA;
   maskB.invert();
 
+  //outTempG = performerMask;
   performerMask = thresh;
-  performerMask.dilate();
-  performerMask.dilate();
+  //performerMask *= outTempG;
+  performerMask.erode();
+  performerMask.erode();
+  performerMask.blur(5);
   performerMask.blurGaussian();
 }
 
@@ -317,10 +326,16 @@ void shadowPlay::trackShadow()
   
   bool shadowVisible = shadowCF.nBlobs > 0;
   bool recShadowVisible = recordedShadowCF.nBlobs > 0;
+  if(shadowVisible){
+    shadowCentroid = shadowCF.blobs[0].centroid;
+  }
+  if(recShadowVisible){
+    recShadowCentroid = recordedShadowCF.blobs[0].centroid;
+  }
+    
   
   if(shadowVisible && recShadowVisible){
-    shadowCentroid = shadowCF.blobs[0].centroid;
-    recShadowCentroid = recordedShadowCF.blobs[0].centroid;
+    
     shadowPos = shadowCentroid - recShadowCentroid;
   }
   
@@ -431,8 +446,8 @@ void shadowPlay::recordShadow()
 //--------------------------------------------------------------------------------
 void shadowPlay::recordShadow(ofxCvGrayscaleImage im, string outputname, bool numberframes)
 {
-  outTemp = im;//computedShadow;
-  out.setFromPixels(outTemp.getPixelsRef());
+  outTempC = im;//computedShadow;
+  out.setFromPixels(outTempC.getPixelsRef());
   
   stringstream ss;
   ss  << "recordings/rec/";
@@ -503,14 +518,48 @@ void shadowPlay::draw()
   }
 
   performerFbo.begin();
-    ofClear(0,0,0);
+    ofClear(1,1,1);
+    float fade = ofMap(performerFade,0,255,0.0,1.0);
+    glBlendColor(fade,fade,fade,1);
     glEnable(GL_BLEND);
-    glBlendFunc(GL_ONE, GL_ZERO);
-    performerProj.drawFrame(shadowCentroid.x-performerMask.getWidth()/2.0,shadowCentroid.y-performerMask.getHeight()/2.0,performerMask.getWidth(),performerMask.getHeight());
+
+    glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
+
+    if(performerLit){
+      ofColor(255,255,255);
+      ofRect(0,0,performerFbo.getWidth(), performerFbo.getHeight());
+    }
+    else{
+      performerProj.drawFrame(shadowCentroid.x-performerMask.getWidth()/2.0,shadowCentroid.y-performerMask.getHeight()/2.0,performerMask.getWidth(),performerMask.getHeight());
+    }
+    
     glBlendFunc(GL_DST_COLOR, GL_ZERO);
     performerMask.draw(0,0);
     glDisable(GL_BLEND);
   performerFbo.end();
+  cout << performerFade << endl;
+  if(performerFadeIn && performerFade < 255){
+    performerFade += 20;
+    if(performerFade >= 255){
+      performerFade = 255;
+    }
+  }
+  else if(!performerFadeIn && performerFade > 0){
+    performerFade -= 20;
+    if(performerFade <= 0){
+      performerFade = 0;
+    }
+  }
+
+  characterFbo.begin();
+    ofClear(0,0,0);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ZERO);
+    characterProj.drawFrame(recShadowCentroid.x-characterMask.getWidth()/2.0,recShadowCentroid.y-characterMask.getHeight()/2.0,characterMask.getWidth(),characterMask.getHeight());
+    glBlendFunc(GL_DST_COLOR, GL_ZERO);
+    characterMask.draw(0,0);
+    glDisable(GL_BLEND);
+  characterFbo.end();
 
   
   switch(state){
@@ -583,7 +632,6 @@ void shadowPlay::drawCalibrationFrames()
   winA->getBuffer()->begin();
   ofClear(0,0,0);
   winA->windowDistort();
-  cout << aColor << endl;
   glBlendColor(aColor.x,aColor.y,aColor.z,1);
   glEnable(GL_BLEND);
   glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
@@ -640,7 +688,6 @@ void shadowPlay::drawNoShadow()
   winA->getBuffer()->begin();
   ofClear(0,0,0);
   winA->windowDistort();
-  cout << aColor << endl;
   glBlendColor(aColor.x,aColor.y,aColor.z,1);
   glEnable(GL_BLEND);
   glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
@@ -694,7 +741,6 @@ void shadowPlay::drawComputedShadow()
   winA->getBuffer()->begin();
   ofClear(0,0,0);
   winA->windowDistort();
-  cout << aColor << endl;
   glBlendColor(aColor.x,aColor.y,aColor.z,1);
   glEnable(GL_BLEND);
   glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
@@ -727,6 +773,10 @@ void shadowPlay::drawComputedShadow()
   glBlendFunc(GL_DST_COLOR, GL_ZERO);
   
   maskB.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+
+  glBlendFunc(GL_ONE, GL_ONE);
+
+  performerFbo.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
   glDisable(GL_BLEND);
   winB->getBuffer()->end();
@@ -741,7 +791,6 @@ void shadowPlay::drawTweenShadow()
   winA->getBuffer()->begin();
   ofClear(0,0,0);
   winA->windowDistort();
-  cout << aColor << endl;
   glBlendColor(aColor.x,aColor.y,aColor.z,1);
   glEnable(GL_BLEND);
   glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
@@ -778,6 +827,10 @@ void shadowPlay::drawTweenShadow()
   glBlendFunc(GL_DST_COLOR, GL_ZERO);
   
   tween.draw(shadowPos.x*scaleFactor,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+
+  glBlendFunc(GL_ONE, GL_ONE);
+
+  performerFbo.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
 
   glDisable(GL_BLEND);
   winB->getBuffer()->end();
@@ -786,7 +839,6 @@ void shadowPlay::drawTweenShadow()
 //--------------------------------------------------------------------------------
 void shadowPlay::drawRecordedShadow()
 {
-  
   // Draw Window A
   winA->draw();
   
@@ -794,7 +846,6 @@ void shadowPlay::drawRecordedShadow()
   ofClear(0,0,0);
   winA->windowDistort();
 
-cout << aColor << endl;
   glBlendColor(aColor.x,aColor.y,aColor.z,1);
 
   glEnable(GL_BLEND);
@@ -832,6 +883,10 @@ cout << aColor << endl;
   glBlendFunc(GL_DST_COLOR, GL_ZERO);
   
   recordedShadowFrame.draw(shadowPos.x*scaleFactor,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+
+  glBlendFunc(GL_ONE, GL_ONE);
+
+  performerFbo.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
   glDisable(GL_BLEND);
   winB->getBuffer()->end();
@@ -940,6 +995,12 @@ void shadowPlay::keyPressed(int key)
     break;
   case 'a':
     assignDefaultSettings();
+    break;
+  case 'o':
+    performerLit = !performerLit;
+    break;
+  case 'p':
+    performerFadeIn = !performerFadeIn;
     break;
   case '1':
     setState(CALIBRATION);
