@@ -11,13 +11,13 @@ void shadowPlay::setup(){
   winB = new childWindow("Window B",WINDOW_B, DISPLAY_WIDTH, DISPLAY_HEIGHT);//,cornersB);
   winB->getWin()->addListener(new childWindowListener(this,winB->getBuffer(),WINDOW_B));
 
-  shadowRecDir = "recordings/bat/";
+  shadowRecDir = "recordings/rec/";
   //ofSetFrameRate(2); 
   
   loadSettings();
 
   /* Setting up to receive the camera input (pass 'true' for a sequence of test frames) */
-  cam = new camera(true); 
+  cam = new camera(false); 
   cam->update();
   
   /* Loading helper images */  
@@ -307,7 +307,7 @@ void shadowPlay::generateMask()
   // performerMask.erode();
   // performerMask.erode();
   performerMask.erode();
-  // performerMask.blur(5);
+  performerMask.blur(5);
   performerMask.blurGaussian();
 }
 
@@ -540,9 +540,11 @@ void shadowPlay::draw()
 
   if(RECORDED_SHADOW || TRACKED_RECORDED_SHADOW){
     recordedShadowFrame = *(recordedShadow.getFrame());
+
     recordedShadowThresh = recordedShadowFrame;
     recordedShadowThresh.invert();
     recordedShadowThresh.threshold(thresholdValue);
+
   }
 
   contourShadows();
@@ -598,10 +600,11 @@ void shadowPlay::draw()
 
     glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
 
-    characterProj.drawFrame(recShadowCentroid.x-shadow.getWidth()/2.0,recShadowCentroid.y-shadow.getHeight()/2.0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+
+    characterProj.drawFrame(recShadowCentroid.x-recordedShadowFrame.getWidth()/2.0,recShadowCentroid.y-recordedShadowFrame.getHeight()/2.0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
     
     glBlendFunc(GL_DST_COLOR, GL_ZERO);
-    shadow.draw(0,0);
+    recordedShadowFrame.draw(0,0);
     glDisable(GL_BLEND);
   characterFbo.end();
 
@@ -754,6 +757,8 @@ void shadowPlay::drawNoShadow()
   glBlendFunc(GL_DST_COLOR, GL_ZERO);
   
   maskA.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+
+
   
   glDisable(GL_BLEND);
   
@@ -816,9 +821,9 @@ void shadowPlay::drawComputedShadow()
   
   computedShadow.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
 
-  // glBlendFunc(GL_ONE, GL_ONE);
+  glBlendFunc(GL_ONE, GL_ONE);
 
-  // characterFbo.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+  characterFbo.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
 
   glDisable(GL_BLEND);
   
