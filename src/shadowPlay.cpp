@@ -17,7 +17,7 @@ void shadowPlay::setup(){
   loadSettings();
 
   /* Setting up to receive the camera input (pass 'true' for a sequence of test frames) */
-  cam = new camera(false);
+  cam = new camera(true); 
   cam->update();
   
   /* Loading helper images */  
@@ -540,69 +540,69 @@ void shadowPlay::draw()
     ofDrawBitmapString("tracking shadow (t): false",660,20);
   }
 
-  // float fade;
-  // performerFbo.begin();
-  //   ofClear(1,1,1);
-  //   fade = ofMap(performerFade,0,255,0.0,1.0);
-  //   glBlendColor(fade,fade,fade,1);
-  //   glEnable(GL_BLEND);
+  float fade;
+  performerFbo.begin();
+    ofClear(1,1,1);
+    fade = ofMap(performerFade,0,255,0.0,1.0);
+    glBlendColor(fade,fade,fade,1);
+    glEnable(GL_BLEND);
 
-  //   glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
+    glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
 
-  //   if(performerLit){
-  //     ofColor(255,255,255);
-  //     ofRect(0,0,performerFbo.getWidth(), performerFbo.getHeight());
-  //   }
-  //   else{
-  //     performerProj.drawFrame(shadowCentroid.x-performerMask.getWidth()/2.0,shadowCentroid.y-performerMask.getHeight()/2.0,performerMask.getWidth(),performerMask.getHeight());
-  //   }
+    if(performerLit){
+      ofColor(255,255,255);
+      ofRect(0,0,performerFbo.getWidth(), performerFbo.getHeight());
+    }
+    else{
+      performerProj.drawFrame(shadowCentroid.x-performerMask.getWidth()/2.0,shadowCentroid.y-performerMask.getHeight()/2.0,performerMask.getWidth(),performerMask.getHeight());
+    }
     
-  //   //glBlendFunc(GL_DST_COLOR, GL_ZERO);
-  //   //performerMask.draw(0,0);
+    glBlendFunc(GL_DST_COLOR, GL_ZERO);
+    performerMask.draw(0,0);
     
-  //   glDisable(GL_BLEND);
-  // performerFbo.end();
+    glDisable(GL_BLEND);
+  performerFbo.end();
 
-  // if(performerFadeIn && performerFade < 255){
-  //   performerFade += 20;
-  //   if(performerFade >= 255){
-  //     performerFade = 255;
-  //   }
-  // }
-  // else if(!performerFadeIn && performerFade > 0){
-  //   performerFade -= 20;
-  //   if(performerFade <= 0){
-  //     performerFade = 0;
-  //   }
-  // }
+  if(performerFadeIn && performerFade < 255){
+    performerFade += 20;
+    if(performerFade >= 255){
+      performerFade = 255;
+    }
+  }
+  else if(!performerFadeIn && performerFade > 0){
+    performerFade -= 20;
+    if(performerFade <= 0){
+      performerFade = 0;
+    }
+  }
 
-  // characterFbo.begin();
-  //   ofClear(1,1,1);
-  //   fade = ofMap(characterFade,0,255,0.0,1.0);
-  //   glBlendColor(fade,fade,fade,1);
-  //   glEnable(GL_BLEND);
+  characterFbo.begin();
+    ofClear(1,1,1);
+    fade = ofMap(characterFade,0,255,0.0,1.0);
+    glBlendColor(fade,fade,fade,1);
+    glEnable(GL_BLEND);
 
-  //   glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
+    glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
 
-  //   characterProj.drawFrame(shadowCentroid.x-shadow.getWidth()/2.0,shadowCentroid.y-shadow.getHeight()/2.0,shadow.getWidth(),shadow.getHeight());
+    characterProj.drawFrame(shadowCentroid.x-shadow.getWidth()/2.0,shadowCentroid.y-shadow.getHeight()/2.0,shadow.getWidth(),shadow.getHeight());
     
-  //   glBlendFunc(GL_DST_COLOR, GL_ZERO);
-  //   shadow.draw(0,0);
-  //   glDisable(GL_BLEND);
-  // characterFbo.end();
+    glBlendFunc(GL_DST_COLOR, GL_ZERO);
+    shadow.draw(0,0);
+    glDisable(GL_BLEND);
+  characterFbo.end();
 
-  // if(characterFadeIn && characterFade < 255){
-  //   characterFade += 20;
-  //   if(characterFade >= 255){
-  //     characterFade = 255;
-  //   }
-  // }
-  // else if(!characterFadeIn && characterFade > 0){
-  //   characterFade -= 20;
-  //   if(characterFade <= 0){
-  //     characterFade = 0;
-  //   }
-  // }
+  if(characterFadeIn && characterFade < 255){
+    characterFade += 20;
+    if(characterFade >= 255){
+      characterFade = 255;
+    }
+  }
+  else if(!characterFadeIn && characterFade > 0){
+    characterFade -= 20;
+    if(characterFade <= 0){
+      characterFade = 0;
+    }
+  }
 
   
   switch(state){
