@@ -17,7 +17,7 @@ void shadowPlay::setup(){
   loadSettings();
 
   /* Setting up to receive the camera input (pass 'true' for a sequence of test frames) */
-  cam = new camera(false); 
+  cam = new camera(true); 
   cam->update();
   
   /* Loading helper images */  
@@ -925,6 +925,10 @@ void shadowPlay::drawRecordedShadow()
   glBlendFunc(GL_DST_COLOR, GL_ZERO);
   
   recordedShadowFrame.draw(shadowPos.x*scaleFactor,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+
+  glBlendFunc(GL_ONE, GL_ONE);
+
+  characterFbo.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   
   glDisable(GL_BLEND);
   
