@@ -59,8 +59,8 @@ void shadowPlay::setup(){
   scaleFactor = DISPLAY_WIDTH/cam->getWidth();
   
   recordedShadow.init(shadowRecDir);
-  // performerProj.init("recordings/eye/");
-  // characterProj.init("recordings/eye/");
+  performerProj.init("recordings/eye2/");
+  characterProj.init("recordings/eye2/");
   isRecording = false;
 
   performerFade = 255;
@@ -257,11 +257,13 @@ int shadowPlay::getFocus()
 void shadowPlay::update()
 {
   cam->update();
+  performerProj.update();
+  characterProj.update();
+  trackShadow();
   if(state==RECORDED_SHADOW || state== TWEEN_SHADOW || state == TRACKED_RECORDED_SHADOW){
   recordedShadow.update();
-  //performerProj.update();
-  //characterProj.update();
-  trackShadow();
+  
+  
   }
 }
 
@@ -554,7 +556,7 @@ void shadowPlay::draw()
       ofRect(0,0,performerFbo.getWidth(), performerFbo.getHeight());
     }
     else{
-      performerProj.drawFrame(shadowCentroid.x-performerMask.getWidth()/2.0,shadowCentroid.y-performerMask.getHeight()/2.0,performerMask.getWidth(),performerMask.getHeight());
+      performerProj.drawFrame(shadowCentroid.x-performerMask.getWidth()/2.0,shadowCentroid.y-performerMask.getHeight()/2.0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
     }
     
     glBlendFunc(GL_DST_COLOR, GL_ZERO);
