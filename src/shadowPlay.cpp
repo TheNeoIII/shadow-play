@@ -11,7 +11,7 @@ void shadowPlay::setup(){
   winB = new childWindow("Window B",WINDOW_B, DISPLAY_WIDTH, DISPLAY_HEIGHT);//,cornersB);
   winB->getWin()->addListener(new childWindowListener(this,winB->getBuffer(),WINDOW_B));
 
-  shadowRecDir = "recordings/rec/";
+  shadowRecDir = "recordings/bat/";
   //ofSetFrameRate(2); 
   
   loadSettings();
@@ -303,6 +303,11 @@ void shadowPlay::generateMask()
   //performerMask *= outTempG;
   performerMask.erode();
   performerMask.erode();
+  performerMask.erode();
+  performerMask.erode();
+  performerMask.erode();
+  performerMask.erode();
+  performerMask.erode();
   performerMask.blur(5);
   performerMask.blurGaussian();
 }
@@ -455,8 +460,9 @@ void shadowPlay::generateComputedShadow()
   computedShadow.invert();
   computedShadow *= computedShadow;
   computedShadow *= computedShadow;
+  computedShadow *= computedShadow;
   computedShadow.blurGaussian(1);
-  computedShadow += computedShadow;
+  //computedShadow += computedShadow;
 
 
 }
@@ -586,7 +592,7 @@ void shadowPlay::draw()
 
     glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
 
-    characterProj.drawFrame(shadowCentroid.x-shadow.getWidth()/2.0,shadowCentroid.y-shadow.getHeight()/2.0,shadow.getWidth(),shadow.getHeight());
+    characterProj.drawFrame(recShadowCentroid.x-shadow.getWidth()/2.0,recShadowCentroid.y-shadow.getHeight()/2.0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
     
     glBlendFunc(GL_DST_COLOR, GL_ZERO);
     shadow.draw(0,0);
@@ -640,10 +646,10 @@ void shadowPlay::draw()
 
     float tweenPercent = (1.0*tweenFrame)/(1.0*tweenLength);
     if(prevState == COMPUTED_SHADOW){
-      tweenShadow(true, tweenPercent);  
+      tweenShadow(false, tweenPercent);  
     }
     else{
-      tweenShadow(false, tweenPercent);
+      tweenShadow(true, tweenPercent);
     }
 
     drawTweenShadow();
