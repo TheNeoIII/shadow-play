@@ -12,11 +12,12 @@ void shadowPlay::setup(){
   winB->getWin()->addListener(new childWindowListener(this,winB->getBuffer(),WINDOW_B));
 
   shadowRecDir = "recordings/rec/";
+  //ofSetFrameRate(2); 
   
   loadSettings();
 
   /* Setting up to receive the camera input (pass 'true' for a sequence of test frames) */
-  cam = new camera(true);
+  cam = new camera(false);
   cam->update();
   
   /* Loading helper images */  
@@ -26,7 +27,7 @@ void shadowPlay::setup(){
   calibImageB.loadImage("calibrationImageB.jpg");
   calibImageB.setImageType(OF_IMAGE_COLOR);
   
-  backgroundFrame.loadImage("bg_birch.jpg");
+  backgroundFrame.loadImage("spooky.jpg");
   backgroundFrame.setImageType(OF_IMAGE_COLOR);
   
   /* Setting up intermediary graphics buffers for creating the masks */
@@ -58,13 +59,16 @@ void shadowPlay::setup(){
   scaleFactor = DISPLAY_WIDTH/cam->getWidth();
   
   recordedShadow.init(shadowRecDir);
-  performerProj.init("recordings/eye/");
-  characterProj.init("recordings/eye/");
+  // performerProj.init("recordings/eye/");
+  // characterProj.init("recordings/eye/");
   isRecording = false;
 
   performerFade = 255;
   performerFadeIn = true;
   performerLit = true;
+
+  characterFade = 0;
+  characterFadeIn = false;
 
   focus = CONTROL_WINDOW;  
 
@@ -92,6 +96,9 @@ void shadowPlay::assignDefaultSettings(){
   thresholdValue = 40;
   dilateValue = 5;
   blurValue = 5;
+  scale = 1.0;
+  offsetX = 0;
+  offsetY = 0;
 
   defaultWarpCoords[0].x = 0.0;
   defaultWarpCoords[0].y = 0.0;
@@ -128,6 +135,9 @@ void shadowPlay::loadSettings(){
     cout << "dilateValue " << dilateValue << endl;
     blurValue = settings.getValue("blurValue",blurValue);
     cout << "blurValue " << blurValue << endl;
+    cout << "scale " << scale << endl;
+    cout << "offsetX " << offsetX << endl;
+    cout << "offsetY " << offsetY << endl;
     winA->setWarpPoints(loadPoints("warpPtsA"));
     winB->setWarpPoints(loadPoints("warpPtsB"));
     cout << "*****************************" << endl;
@@ -211,6 +221,15 @@ void shadowPlay::saveSettings(){
   settings.setValue("blurValue",blurValue);
   cout << "blurValue " << blurValue << endl;
 
+  settings.setValue("scale",scale);
+  cout << "scale " << scale << endl;
+
+  settings.setValue("offsetX",offsetX);
+  cout << "offsetX " << offsetX << endl;
+
+  settings.setValue("offsetY",offsetY);
+  cout << "offsetY " << offsetY << endl;
+
   savePoints("warpPtsA",winA);
 
   savePoints("warpPtsB",winB);
@@ -238,17 +257,20 @@ int shadowPlay::getFocus()
 void shadowPlay::update()
 {
   cam->update();
-  //if(state==RECORDED_SHADOW || state == TRACKED_RECORDED_SHADOW){
+  if(state==RECORDED_SHADOW || state== TWEEN_SHADOW || state == TRACKED_RECORDED_SHADOW){
   recordedShadow.update();
-  performerProj.update();
+  //performerProj.update();
+  //characterProj.update();
   trackShadow();
-  //}
+  }
 }
 
 //--------------------------------------------------------------------------------
 void shadowPlay::generateMask()
 {
   frame = *(cam->getFrame());
+
+  frame.transform(0, 0,0, scale,scale,offsetX,offsetY);
   
   diff = diffBg;
   diff.absDiff(frame);
@@ -450,7 +472,7 @@ void shadowPlay::recordShadow(ofxCvGrayscaleImage im, string outputname, bool nu
   out.setFromPixels(outTempC.getPixelsRef());
   
   stringstream ss;
-  ss  << "recordings/rec/";
+  ss  << "recordings/vid/";
   ss << outputname;
   if(numberframes){
     
@@ -471,19 +493,20 @@ void shadowPlay::draw()
   generateMask();
   generateComputedShadow();
 
+  //ofSaveFrame();
+
   
   
   if(isRecording){
     recordShadow();
-    /**
-       recordShadow(diff,"diff",false);
-       recordShadow(shadow,"shadow",false);
-       recordShadow(thresh,"thresh",false);
-       recordShadow(dilate,"dilate",false);
-       recordShadow(blur,"blur",false);
-       recordShadow(maskA,"maskA",false);
-       recordShadow(maskB,"maskB",false);
-    **/
+      //recordShadow(*(cam->getFrame()),"cam",true);
+       // recordShadow(diff,"diff",true);
+       // recordShadow(shadow,"shadow",true);
+       // recordShadow(thresh,"thresh",true);
+       // recordShadow(dilate,"dilate",true);
+       // recordShadow(blur,"blur",true);
+       //recordShadow(maskA,"maskA",true);
+       // recordShadow(maskB,"maskB",true);
   }
   
   
@@ -498,7 +521,7 @@ void shadowPlay::draw()
   frame.draw(10,310);
   computedShadow.draw(330,310,320,240);
   backgroundFrame.draw(660,310,320,240);
-  tween.draw(10,660,320,240);
+  //tween.draw(10,660,320,240);
 
 
   if(RECORDED_SHADOW || TRACKED_RECORDED_SHADOW){
@@ -517,49 +540,69 @@ void shadowPlay::draw()
     ofDrawBitmapString("tracking shadow (t): false",660,20);
   }
 
-  performerFbo.begin();
-    ofClear(1,1,1);
-    float fade = ofMap(performerFade,0,255,0.0,1.0);
-    glBlendColor(fade,fade,fade,1);
-    glEnable(GL_BLEND);
+  // float fade;
+  // performerFbo.begin();
+  //   ofClear(1,1,1);
+  //   fade = ofMap(performerFade,0,255,0.0,1.0);
+  //   glBlendColor(fade,fade,fade,1);
+  //   glEnable(GL_BLEND);
 
-    glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
+  //   glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
 
-    if(performerLit){
-      ofColor(255,255,255);
-      ofRect(0,0,performerFbo.getWidth(), performerFbo.getHeight());
-    }
-    else{
-      performerProj.drawFrame(shadowCentroid.x-performerMask.getWidth()/2.0,shadowCentroid.y-performerMask.getHeight()/2.0,performerMask.getWidth(),performerMask.getHeight());
-    }
+  //   if(performerLit){
+  //     ofColor(255,255,255);
+  //     ofRect(0,0,performerFbo.getWidth(), performerFbo.getHeight());
+  //   }
+  //   else{
+  //     performerProj.drawFrame(shadowCentroid.x-performerMask.getWidth()/2.0,shadowCentroid.y-performerMask.getHeight()/2.0,performerMask.getWidth(),performerMask.getHeight());
+  //   }
     
-    glBlendFunc(GL_DST_COLOR, GL_ZERO);
-    performerMask.draw(0,0);
-    glDisable(GL_BLEND);
-  performerFbo.end();
-  cout << performerFade << endl;
-  if(performerFadeIn && performerFade < 255){
-    performerFade += 20;
-    if(performerFade >= 255){
-      performerFade = 255;
-    }
-  }
-  else if(!performerFadeIn && performerFade > 0){
-    performerFade -= 20;
-    if(performerFade <= 0){
-      performerFade = 0;
-    }
-  }
+  //   //glBlendFunc(GL_DST_COLOR, GL_ZERO);
+  //   //performerMask.draw(0,0);
+    
+  //   glDisable(GL_BLEND);
+  // performerFbo.end();
 
-  characterFbo.begin();
-    ofClear(0,0,0);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_ONE, GL_ZERO);
-    characterProj.drawFrame(recShadowCentroid.x-characterMask.getWidth()/2.0,recShadowCentroid.y-characterMask.getHeight()/2.0,characterMask.getWidth(),characterMask.getHeight());
-    glBlendFunc(GL_DST_COLOR, GL_ZERO);
-    characterMask.draw(0,0);
-    glDisable(GL_BLEND);
-  characterFbo.end();
+  // if(performerFadeIn && performerFade < 255){
+  //   performerFade += 20;
+  //   if(performerFade >= 255){
+  //     performerFade = 255;
+  //   }
+  // }
+  // else if(!performerFadeIn && performerFade > 0){
+  //   performerFade -= 20;
+  //   if(performerFade <= 0){
+  //     performerFade = 0;
+  //   }
+  // }
+
+  // characterFbo.begin();
+  //   ofClear(1,1,1);
+  //   fade = ofMap(characterFade,0,255,0.0,1.0);
+  //   glBlendColor(fade,fade,fade,1);
+  //   glEnable(GL_BLEND);
+
+  //   glBlendFunc(GL_CONSTANT_COLOR, GL_ZERO);
+
+  //   characterProj.drawFrame(shadowCentroid.x-shadow.getWidth()/2.0,shadowCentroid.y-shadow.getHeight()/2.0,shadow.getWidth(),shadow.getHeight());
+    
+  //   glBlendFunc(GL_DST_COLOR, GL_ZERO);
+  //   shadow.draw(0,0);
+  //   glDisable(GL_BLEND);
+  // characterFbo.end();
+
+  // if(characterFadeIn && characterFade < 255){
+  //   characterFade += 20;
+  //   if(characterFade >= 255){
+  //     characterFade = 255;
+  //   }
+  // }
+  // else if(!characterFadeIn && characterFade > 0){
+  //   characterFade -= 20;
+  //   if(characterFade <= 0){
+  //     characterFade = 0;
+  //   }
+  // }
 
   
   switch(state){
@@ -666,23 +709,23 @@ void shadowPlay::drawRealShadow()
   winA->getBuffer()->begin();
   ofClear(0,0,0);
   winA->windowDistort();
-  backgroundFrame.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+  ofClear(0,0,0);
   winA->getBuffer()->end();
   
   //Draw Window B
   winB->draw();
   
   winB->getBuffer()->begin();
-  ofClear(0,0,0);
+
+  
   winB->windowDistort();
+  backgroundFrame.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
   winB->getBuffer()->end();
 }
 
 //--------------------------------------------------------------------------------
 void shadowPlay::drawNoShadow()
 {
-  
-
   winA->draw();
   
   winA->getBuffer()->begin();
@@ -722,9 +765,9 @@ void shadowPlay::drawNoShadow()
 
   // glBlendEquation(GL_FUNC_ADD);
 
-  glBlendFunc(GL_ONE, GL_ONE);
+  //glBlendFunc(GL_ONE, GL_ONE);
 
-  performerFbo.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+  //performerFbo.draw(offsetX,offsetY,scale*DISPLAY_WIDTH,scale*DISPLAY_HEIGHT);
 
 
   glDisable(GL_BLEND);
@@ -754,6 +797,10 @@ void shadowPlay::drawComputedShadow()
   glBlendFunc(GL_DST_COLOR, GL_ZERO);
   
   computedShadow.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+
+  glBlendFunc(GL_ONE, GL_ONE);
+
+  characterFbo.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
 
   glDisable(GL_BLEND);
   
@@ -996,6 +1043,9 @@ void shadowPlay::keyPressed(int key)
   case 'a':
     assignDefaultSettings();
     break;
+  case 'u':
+    characterFadeIn = !characterFadeIn;
+    break;
   case 'o':
     performerLit = !performerLit;
     break;
@@ -1054,36 +1104,64 @@ void shadowPlay::keyPressed(int key)
     
     break;
   case 269:
-    if(focus == WINDOW_A){
-      winA->bumpCorner(0,-1);
+    if(state == CALIBRATION){
+      if(focus == WINDOW_A){
+        winA->bumpCorner(0,-1);
+      }
+      else if(focus == WINDOW_B){
+        winB->bumpCorner(0,-1);
+      }
     }
-    else if(focus == WINDOW_B){
-      winB->bumpCorner(0,-1);
-    }
+  else{
+    offsetY -= 1;
+  }
     break;
   case 267:
-    if(focus == WINDOW_A){
-      winA->bumpCorner(-1,0);
+    if(state == CALIBRATION){
+      if(focus == WINDOW_A){
+        winA->bumpCorner(-1,0);
+      }
+      else if(focus == WINDOW_B){
+        winB->bumpCorner(-1,0);
+      }
+ 
     }
-    else if(focus == WINDOW_B){
-      winB->bumpCorner(-1,0);
-    }
-      break;
+  else{
+    offsetX -= 1;
+  }
+    break;
   case 270:
-    if(focus == WINDOW_A){
-      winA->bumpCorner(0,1);
+    if(state == CALIBRATION){
+      if(focus == WINDOW_A){
+        winA->bumpCorner(0,1);
+      }
+      else if(focus == WINDOW_B){
+        winB->bumpCorner(0,1);
+      }
+ 
     }
-    else if(focus == WINDOW_B){
-      winB->bumpCorner(0,1);
-    }
+  else{
+    offsetY += 1;
+  }
     break;
   case 268:
-    if(focus == WINDOW_A){
-      winA->bumpCorner(1,0);
-    }
-      else if(focus == WINDOW_B){
-        winB->bumpCorner(1,0);
+    if(state == CALIBRATION){
+      if(focus == WINDOW_A){
+        winA->bumpCorner(1,0);
       }
+        else if(focus == WINDOW_B){
+          winB->bumpCorner(1,0);
+        }
+      }
+    else{
+      offsetX += 1;
+    }
+    break;
+  case 'k':
+    scale -= 0.01;
+    break;
+  case 'l':
+    scale += 0.01;
     break;
   }
 }

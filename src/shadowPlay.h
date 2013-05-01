@@ -316,6 +316,9 @@ class shadowPlay : public ofBaseApp{
         bool performerFadeIn;
         bool performerLit;
 
+        int characterFade;
+        bool characterFadeIn;
+
 		ofImage out;
         ofxCvColorImage outTempC;
 		ofxCvGrayscaleImage outTempG;
@@ -349,6 +352,8 @@ class shadowPlay : public ofBaseApp{
 
         ofVec3f aColor;
         ofVec3f bColor;
+
+        float scale, offsetX, offsetY;
 
 
 		shadowPlay();
