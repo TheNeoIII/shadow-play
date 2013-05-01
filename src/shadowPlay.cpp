@@ -17,7 +17,7 @@ void shadowPlay::setup(){
   loadSettings();
 
   /* Setting up to receive the camera input (pass 'true' for a sequence of test frames) */
-  cam = new camera(true); 
+  cam = new camera(false); 
   cam->update();
   
   /* Loading helper images */  
@@ -27,7 +27,7 @@ void shadowPlay::setup(){
   calibImageB.loadImage("calibrationImageB.jpg");
   calibImageB.setImageType(OF_IMAGE_COLOR);
   
-  backgroundFrame.loadImage("spooky.jpg");
+  backgroundFrame.loadImage("charts.png");
   backgroundFrame.setImageType(OF_IMAGE_COLOR);
   
   /* Setting up intermediary graphics buffers for creating the masks */
@@ -136,8 +136,11 @@ void shadowPlay::loadSettings(){
     blurValue = settings.getValue("blurValue",blurValue);
     cout << "blurValue " << blurValue << endl;
     cout << "scale " << scale << endl;
+    scale = settings.getValue("scale",scale);
     cout << "offsetX " << offsetX << endl;
+    offsetX = settings.getValue("offsetX",offsetX);
     cout << "offsetY " << offsetY << endl;
+    offsetY = settings.getValue("offsetY",offsetY);
     winA->setWarpPoints(loadPoints("warpPtsA"));
     winB->setWarpPoints(loadPoints("warpPtsB"));
     cout << "*****************************" << endl;
@@ -301,14 +304,10 @@ void shadowPlay::generateMask()
   //outTempG = performerMask;
   performerMask = thresh;
   //performerMask *= outTempG;
+  // performerMask.erode();
+  // performerMask.erode();
   performerMask.erode();
-  performerMask.erode();
-  performerMask.erode();
-  performerMask.erode();
-  performerMask.erode();
-  performerMask.erode();
-  performerMask.erode();
-  performerMask.blur(5);
+  // performerMask.blur(5);
   performerMask.blurGaussian();
 }
 
@@ -458,10 +457,17 @@ void shadowPlay::generateComputedShadow()
 {
   computedShadow = shadow;
   computedShadow.invert();
-  computedShadow *= computedShadow;
+  // outTempG = thresh;
+  // outTempG.dilate();
+  // outTempG.dilate();
+  // outTempG.dilate();
+  // computedShadow *= outTempG;
   computedShadow *= computedShadow;
   computedShadow *= computedShadow;
   computedShadow.blurGaussian(1);
+  computedShadow -= 50;
+  computedShadow += 20;
+  computedShadow.contrastStretch();
   //computedShadow += computedShadow;
 
 
@@ -771,6 +777,10 @@ void shadowPlay::drawNoShadow()
 
   maskB.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
 
+  glBlendFunc(GL_ONE, GL_ONE);
+
+  performerFbo.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+
   // glBlendEquation(GL_FUNC_ADD);
 
   //glBlendFunc(GL_ONE, GL_ONE);
@@ -806,9 +816,9 @@ void shadowPlay::drawComputedShadow()
   
   computedShadow.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
 
-  glBlendFunc(GL_ONE, GL_ONE);
+  // glBlendFunc(GL_ONE, GL_ONE);
 
-  characterFbo.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
+  // characterFbo.draw(0,0,DISPLAY_WIDTH,DISPLAY_HEIGHT);
 
   glDisable(GL_BLEND);
   
